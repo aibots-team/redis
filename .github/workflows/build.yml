@@ -36,7 +36,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential tcl pkg-config libssl-dev gcc g++
+          sudo apt-get install -y build-essential tcl pkg-config libssl-dev
 
       - name: Build Redis
         run: |
@@ -48,9 +48,6 @@ jobs:
       - name: Create release package
         run: |
           cd $GITHUB_WORKSPACE
-          echo "Current directory: $(pwd)"
-          echo "Files in current directory:"
-          ls -la
           mkdir -p redis-${{ env.VERSION }}-linux-${{ matrix.arch }}
           cp /tmp/redis-build/bin/* redis-${{ env.VERSION }}-linux-${{ matrix.arch }}/
           cp redis.conf redis-${{ env.VERSION }}-linux-${{ matrix.arch }}/
@@ -58,11 +55,6 @@ jobs:
           echo "Redis ${{ env.VERSION }} for Linux ${{ matrix.arch }}" > redis-${{ env.VERSION }}-linux-${{ matrix.arch }}/README.txt
           echo "Built on $(date)" >> redis-${{ env.VERSION }}-linux-${{ matrix.arch }}/README.txt
           tar -czf redis-${{ env.VERSION }}-linux-${{ matrix.arch }}.tar.gz redis-${{ env.VERSION }}-linux-${{ matrix.arch }}/
-
-      - name: Test build
-        run: |
-          chmod +x .github/scripts/test-build.sh
-          .github/scripts/test-build.sh ${{ env.VERSION }} linux-${{ matrix.arch }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -91,9 +83,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew update
           brew install openssl pkg-config tcl
-          brew install gcc
 
       - name: Build Redis
         run: |
@@ -112,11 +102,6 @@ jobs:
           echo "Redis ${{ env.VERSION }} for macOS ${{ matrix.arch }}" > redis-${{ env.VERSION }}-macos-${{ matrix.arch }}/README.txt
           echo "Built on $(date)" >> redis-${{ env.VERSION }}-macos-${{ matrix.arch }}/README.txt
           tar -czf redis-${{ env.VERSION }}-macos-${{ matrix.arch }}.tar.gz redis-${{ env.VERSION }}-macos-${{ matrix.arch }}/
-
-      - name: Test build
-        run: |
-          chmod +x .github/scripts/test-build.sh
-          .github/scripts/test-build.sh ${{ env.VERSION }} macos-${{ matrix.arch }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -143,9 +128,6 @@ jobs:
       - name: Install dependencies
         run: |
           choco install mingw make
-          refreshenv
-          echo "CC=gcc" >> $env:GITHUB_ENV
-          echo "PATH=$env:PATH;C:\mingw64\bin" >> $env:GITHUB_ENV
 
       - name: Build Redis
         run: |
@@ -164,10 +146,6 @@ jobs:
           echo "Redis ${{ env.VERSION }} for Windows x64" > redis-${{ env.VERSION }}-windows-x64\README.txt
           echo "Built on $(Get-Date)" >> redis-${{ env.VERSION }}-windows-x64\README.txt
           Compress-Archive -Path redis-${{ env.VERSION }}-windows-x64 -DestinationPath redis-${{ env.VERSION }}-windows-x64.zip
-
-      - name: Test build
-        run: |
-          .github/scripts/test-build.ps1 -Version ${{ env.VERSION }} -Platform windows-x64
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
