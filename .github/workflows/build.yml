@@ -28,8 +28,10 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
-          else
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+          else
+            echo "VERSION=dev-$(date +%Y%m%d-%H%M%S)" >> $GITHUB_ENV
           fi
           echo "ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
 
@@ -76,14 +78,16 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
-          else
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+          else
+            echo "VERSION=dev-$(date +%Y%m%d-%H%M%S)" >> $GITHUB_ENV
           fi
           echo "ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
 
       - name: Install dependencies
         run: |
-          brew install openssl pkg-config tcl
+          brew install openssl pkg-config
 
       - name: Build Redis
         run: |
@@ -101,6 +105,8 @@ jobs:
           cp sentinel.conf redis-${{ env.VERSION }}-macos-${{ matrix.arch }}/
           echo "Redis ${{ env.VERSION }} for macOS ${{ matrix.arch }}" > redis-${{ env.VERSION }}-macos-${{ matrix.arch }}/README.txt
           echo "Built on $(date)" >> redis-${{ env.VERSION }}-macos-${{ matrix.arch }}/README.txt
+          # 简单验证构建是否成功
+          ls -la redis-${{ env.VERSION }}-macos-${{ matrix.arch }}/
           tar -czf redis-${{ env.VERSION }}-macos-${{ matrix.arch }}.tar.gz redis-${{ env.VERSION }}-macos-${{ matrix.arch }}/
 
       - name: Upload artifacts
@@ -120,8 +126,10 @@ jobs:
         run: |
           if ("${{ github.event_name }}" -eq "workflow_dispatch") {
             $env:VERSION = "${{ github.event.inputs.version }}"
-          } else {
+          } elseif ("${{ github.ref }}" -like "refs/tags/v*") {
             $env:VERSION = "${{ github.ref_name }}".Replace("v", "")
+          } else {
+            $env:VERSION = "dev-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
           }
           echo "VERSION=$env:VERSION" >> $env:GITHUB_ENV
 
@@ -163,8 +171,10 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
-          else
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+          else
+            echo "VERSION=dev-$(date +%Y%m%d-%H%M%S)" >> $GITHUB_ENV
           fi
 
       - name: Download all artifacts
