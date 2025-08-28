@@ -135,13 +135,30 @@ jobs:
 
       - name: Install dependencies
         run: |
-          choco install mingw make
+          # 使用 Chocolatey 安装 MinGW
+          choco install mingw -y
+          choco install make -y
+          refreshenv
+          
+          # 验证安装
+          gcc --version
+          mingw32-make --version
 
       - name: Build Redis
         run: |
           cd src
+          # 设置环境变量
+          $env:CC = "gcc"
+          $env:PATH = "$env:PATH;C:\mingw64\bin;C:\mingw\bin;C:\ProgramData\chocolatey\bin"
+          
+          # 显示环境信息
+          Write-Host "CC: $env:CC"
+          Write-Host "PATH: $env:PATH"
+          gcc --version
+          
+          # 构建 Redis
           mingw32-make clean
-          mingw32-make -j$env:NUMBER_OF_PROCESSORS USE_SYSTEMD=no
+          mingw32-make -j$env:NUMBER_OF_PROCESSORS USE_SYSTEMD=no MALLOC=libc CC=gcc
           mingw32-make install PREFIX=C:\redis-build
 
       - name: Create release package
