@@ -1,0 +1,228 @@
+name: Build Redis Binaries
+
+on:
+  push:
+    branches:
+      - 'neomate'
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Redis version to build (e.g., 8.2.1)'
+        required: true
+        default: '8.2.1'
+
+jobs:
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [x64, arm64]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up environment
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+          fi
+          echo "ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential tcl pkg-config libssl-dev
+
+      - name: Build Redis
+        run: |
+          cd src
+          make clean
+          make -j$(nproc) USE_SYSTEMD=no
+          make install PREFIX=/tmp/redis-build
+
+      - name: Create release package
+        run: |
+          mkdir -p redis-${{ env.VERSION }}-linux-${{ matrix.arch }}
+          cp /tmp/redis-build/bin/* redis-${{ env.VERSION }}-linux-${{ matrix.arch }}/
+          cp ../redis.conf redis-${{ env.VERSION }}-linux-${{ matrix.arch }}/
+          cp ../sentinel.conf redis-${{ env.VERSION }}-linux-${{ matrix.arch }}/
+          echo "Redis ${{ env.VERSION }} for Linux ${{ matrix.arch }}" > redis-${{ env.VERSION }}-linux-${{ matrix.arch }}/README.txt
+          echo "Built on $(date)" >> redis-${{ env.VERSION }}-linux-${{ matrix.arch }}/README.txt
+          tar -czf redis-${{ env.VERSION }}-linux-${{ matrix.arch }}.tar.gz redis-${{ env.VERSION }}-linux-${{ matrix.arch }}/
+
+      - name: Test build
+        run: |
+          chmod +x .github/scripts/test-build.sh
+          .github/scripts/test-build.sh ${{ env.VERSION }} linux-${{ matrix.arch }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: redis-${{ env.VERSION }}-linux-${{ matrix.arch }}
+          path: redis-${{ env.VERSION }}-linux-${{ matrix.arch }}.tar.gz
+
+  build-macos:
+    name: Build macOS
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        arch: [x64, arm64]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up environment
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+          fi
+          echo "ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: |
+          brew install openssl pkg-config tcl
+
+      - name: Build Redis
+        run: |
+          cd src
+          make clean
+          make -j$(sysctl -n hw.ncpu) USE_SYSTEMD=no
+          make install PREFIX=/tmp/redis-build
+
+      - name: Create release package
+        run: |
+          mkdir -p redis-${{ env.VERSION }}-macos-${{ matrix.arch }}
+          cp /tmp/redis-build/bin/* redis-${{ env.VERSION }}-macos-${{ matrix.arch }}/
+          cp ../redis.conf redis-${{ env.VERSION }}-macos-${{ matrix.arch }}/
+          cp ../sentinel.conf redis-${{ env.VERSION }}-macos-${{ matrix.arch }}/
+          echo "Redis ${{ env.VERSION }} for macOS ${{ matrix.arch }}" > redis-${{ env.VERSION }}-macos-${{ matrix.arch }}/README.txt
+          echo "Built on $(date)" >> redis-${{ env.VERSION }}-macos-${{ matrix.arch }}/README.txt
+          tar -czf redis-${{ env.VERSION }}-macos-${{ matrix.arch }}.tar.gz redis-${{ env.VERSION }}-macos-${{ matrix.arch }}/
+
+      - name: Test build
+        run: |
+          chmod +x .github/scripts/test-build.sh
+          .github/scripts/test-build.sh ${{ env.VERSION }} macos-${{ matrix.arch }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: redis-${{ env.VERSION }}-macos-${{ matrix.arch }}
+          path: redis-${{ env.VERSION }}-macos-${{ matrix.arch }}.tar.gz
+
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up environment
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $env:VERSION = "${{ github.event.inputs.version }}"
+          } else {
+            $env:VERSION = "${{ github.ref_name }}".Replace("v", "")
+          }
+          echo "VERSION=$env:VERSION" >> $env:GITHUB_ENV
+
+      - name: Install dependencies
+        run: |
+          choco install mingw make
+
+      - name: Build Redis
+        run: |
+          cd src
+          mingw32-make clean
+          mingw32-make -j$env:NUMBER_OF_PROCESSORS USE_SYSTEMD=no
+          mingw32-make install PREFIX=C:\redis-build
+
+      - name: Create release package
+        run: |
+          mkdir redis-${{ env.VERSION }}-windows-x64
+          copy C:\redis-build\bin\* redis-${{ env.VERSION }}-windows-x64\
+          copy ..\redis.conf redis-${{ env.VERSION }}-windows-x64\
+          copy ..\sentinel.conf redis-${{ env.VERSION }}-windows-x64\
+          echo "Redis ${{ env.VERSION }} for Windows x64" > redis-${{ env.VERSION }}-windows-x64\README.txt
+          echo "Built on $(Get-Date)" >> redis-${{ env.VERSION }}-windows-x64\README.txt
+          Compress-Archive -Path redis-${{ env.VERSION }}-windows-x64 -DestinationPath redis-${{ env.VERSION }}-windows-x64.zip
+
+      - name: Test build
+        run: |
+          .github/scripts/test-build.ps1 -Version ${{ env.VERSION }} -Platform windows-x64
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: redis-${{ env.VERSION }}-windows-x64
+          path: redis-${{ env.VERSION }}-windows-x64.zip
+
+  create-release:
+    name: Create Release
+    needs: [build-linux, build-macos, build-windows]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Set version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+          fi
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: Redis ${{ env.VERSION }}
+          body: |
+            ## Redis ${{ env.VERSION }} Binary Release
+            
+            This release contains pre-compiled Redis binaries for multiple platforms.
+            
+            ### Downloads
+            - **Linux x64**: `redis-${{ env.VERSION }}-linux-x64.tar.gz`
+            - **Linux ARM64**: `redis-${{ env.VERSION }}-linux-arm64.tar.gz`
+            - **macOS x64**: `redis-${{ env.VERSION }}-macos-x64.tar.gz`
+            - **macOS ARM64**: `redis-${{ env.VERSION }}-macos-arm64.tar.gz`
+            - **Windows x64**: `redis-${{ env.VERSION }}-windows-x64.zip`
+            
+            ### Installation
+            1. Download the appropriate package for your platform
+            2. Extract the archive
+            3. Run `./redis-server` (Linux/macOS) or `redis-server.exe` (Windows)
+            
+            ### Included Files
+            - `redis-server` - Redis server binary
+            - `redis-cli` - Redis command line interface
+            - `redis-benchmark` - Redis benchmark tool
+            - `redis-check-aof` - AOF file checker
+            - `redis-check-rdb` - RDB file checker
+            - `redis-sentinel` - Redis Sentinel
+            - `redis.conf` - Default configuration file
+            - `sentinel.conf` - Sentinel configuration file
+            
+            ### Build Information
+            - Built with GCC/Clang on Linux/macOS
+            - Built with MinGW on Windows
+            - Includes all standard Redis tools and utilities
+            - Optimized for production use
+          files: |
+            redis-${{ env.VERSION }}-linux-x64/redis-${{ env.VERSION }}-linux-x64.tar.gz
+            redis-${{ env.VERSION }}-linux-arm64/redis-${{ env.VERSION }}-linux-arm64.tar.gz
+            redis-${{ env.VERSION }}-macos-x64/redis-${{ env.VERSION }}-macos-x64.tar.gz
+            redis-${{ env.VERSION }}-macos-arm64/redis-${{ env.VERSION }}-macos-arm64.tar.gz
+            redis-${{ env.VERSION }}-windows-x64/redis-${{ env.VERSION }}-windows-x64.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
