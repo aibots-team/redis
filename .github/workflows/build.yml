@@ -47,10 +47,11 @@ jobs:
 
       - name: Create release package
         run: |
+          cd ..
           mkdir -p redis-${{ env.VERSION }}-linux-${{ matrix.arch }}
           cp /tmp/redis-build/bin/* redis-${{ env.VERSION }}-linux-${{ matrix.arch }}/
-          cp ../redis.conf redis-${{ env.VERSION }}-linux-${{ matrix.arch }}/
-          cp ../sentinel.conf redis-${{ env.VERSION }}-linux-${{ matrix.arch }}/
+          cp redis.conf redis-${{ env.VERSION }}-linux-${{ matrix.arch }}/
+          cp sentinel.conf redis-${{ env.VERSION }}-linux-${{ matrix.arch }}/
           echo "Redis ${{ env.VERSION }} for Linux ${{ matrix.arch }}" > redis-${{ env.VERSION }}-linux-${{ matrix.arch }}/README.txt
           echo "Built on $(date)" >> redis-${{ env.VERSION }}-linux-${{ matrix.arch }}/README.txt
           tar -czf redis-${{ env.VERSION }}-linux-${{ matrix.arch }}.tar.gz redis-${{ env.VERSION }}-linux-${{ matrix.arch }}/
@@ -98,10 +99,11 @@ jobs:
 
       - name: Create release package
         run: |
+          cd ..
           mkdir -p redis-${{ env.VERSION }}-macos-${{ matrix.arch }}
           cp /tmp/redis-build/bin/* redis-${{ env.VERSION }}-macos-${{ matrix.arch }}/
-          cp ../redis.conf redis-${{ env.VERSION }}-macos-${{ matrix.arch }}/
-          cp ../sentinel.conf redis-${{ env.VERSION }}-macos-${{ matrix.arch }}/
+          cp redis.conf redis-${{ env.VERSION }}-macos-${{ matrix.arch }}/
+          cp sentinel.conf redis-${{ env.VERSION }}-macos-${{ matrix.arch }}/
           echo "Redis ${{ env.VERSION }} for macOS ${{ matrix.arch }}" > redis-${{ env.VERSION }}-macos-${{ matrix.arch }}/README.txt
           echo "Built on $(date)" >> redis-${{ env.VERSION }}-macos-${{ matrix.arch }}/README.txt
           tar -czf redis-${{ env.VERSION }}-macos-${{ matrix.arch }}.tar.gz redis-${{ env.VERSION }}-macos-${{ matrix.arch }}/
@@ -146,10 +148,11 @@ jobs:
 
       - name: Create release package
         run: |
+          cd ..
           mkdir redis-${{ env.VERSION }}-windows-x64
           copy C:\redis-build\bin\* redis-${{ env.VERSION }}-windows-x64\
-          copy ..\redis.conf redis-${{ env.VERSION }}-windows-x64\
-          copy ..\sentinel.conf redis-${{ env.VERSION }}-windows-x64\
+          copy redis.conf redis-${{ env.VERSION }}-windows-x64\
+          copy sentinel.conf redis-${{ env.VERSION }}-windows-x64\
           echo "Redis ${{ env.VERSION }} for Windows x64" > redis-${{ env.VERSION }}-windows-x64\README.txt
           echo "Built on $(Get-Date)" >> redis-${{ env.VERSION }}-windows-x64\README.txt
           Compress-Archive -Path redis-${{ env.VERSION }}-windows-x64 -DestinationPath redis-${{ env.VERSION }}-windows-x64.zip
